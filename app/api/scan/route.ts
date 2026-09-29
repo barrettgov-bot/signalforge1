@@ -199,7 +199,10 @@ async function fetchBoostedPairs(): Promise<Pair[]> {
   return pairs;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const cronSecret = process.env.CRON_SECRET;
+  const authorization = request.headers.get("authorization");
+  const isCron = Boolean(cronSecret && authorization === `Bearer ${cronSecret}`);
   const scannedAt = new Date().toISOString();
   const alerts: Alert[] = [];
 
@@ -244,8 +247,10 @@ export async function GET() {
   const selected = alerts.slice(0, 25);
 
   const emailResults = [];
-  for (const alert of selected) {
-    emailResults.push(await sendAlertEmail(alert));
+  if (isCron) {
+    for (const alert of selected) {
+      emailResults.push(await sendAlertEmail(alert));
+    }
   }
 
   return NextResponse.json({
@@ -262,6 +267,7 @@ export async function GET() {
     email: {
       configured: Boolean(process.env.RESEND_API_KEY && process.env.ALERT_EMAIL),
       results: emailResults,
+      cronAuthorized: isCron,
     },
   });
 }
