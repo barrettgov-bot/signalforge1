@@ -1,0 +1,22 @@
+name: SignalForge 24/7 Scanner
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger SignalForge scan
+        env:
+          SIGNALFORGE_URL: ${{ secrets.SIGNALFORGE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$SIGNALFORGE_URL" || (echo "Missing SIGNALFORGE_URL secret" && exit 1)
+          test -n "$CRON_SECRET" || (echo "Missing CRON_SECRET secret" && exit 1)
+          curl --fail --silent --show-error \
+            --retry 2 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$SIGNALFORGE_URL/api/scan"
