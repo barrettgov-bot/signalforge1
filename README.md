@@ -19,3 +19,6 @@ npm run dev
 ```
 
 Copy `.env.example` to `.env.local` and configure the services you want to enable.
+
+## Deployment
+Connected to Vercel for production deployment from the `main` branch.
