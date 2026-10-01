@@ -93,3 +93,5 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 @media(max-width:760px){.overviewTape{align-items:flex-start;flex-direction:column;gap:7px}.tapeHead{width:100%}.launchTape .tapeHead{display:flex}.launchTape .tapeHead button{padding:0}.tapeItems{width:100%}}
 
 .systemGrid>div{align-items:flex-start}.systemGrid>div small{display:block;width:100%;margin-top:5px;color:#59677b;font-size:8px;line-height:1.4}.systemGrid>div b{margin-left:auto}.systemGrid>div span{font-weight:700}
+
+.flowBalance{margin-top:10px;padding:12px 14px;border:1px solid #1c293a;border-radius:11px;background:#0a111a}.flowHead{display:flex;align-items:center;justify-content:space-between;gap:12px}.flowHead span{font-size:8px;font-weight:900;letter-spacing:.1em;color:#68768a}.flowHead b{font-size:9px;color:#aeb9c9}.flowTrack{height:6px;margin:9px 0 7px;border-radius:99px;background:#40202a;overflow:hidden}.flowTrack i{display:block;height:100%;background:linear-gradient(90deg,#3bc984,#67e5aa);border-radius:99px}.flowBalance small{font-size:8px;color:#6e7c91}
