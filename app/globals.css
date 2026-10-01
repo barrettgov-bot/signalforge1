@@ -50,3 +50,16 @@ main{max-width:1500px}
  .sourceSort button{white-space:nowrap}
  .stockHero{margin-top:32px}
 }
+
+/* dashboard refinement */
+.sourceSummary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.sourceSummary button{position:relative;overflow:hidden;text-align:left;padding:15px 16px;border:1px solid #1e2b3d;border-radius:14px;background:linear-gradient(145deg,#0d141e,#090e16);color:#edf2f8;cursor:pointer;transition:.18s ease}
+.sourceSummary button:after{content:"";position:absolute;width:90px;height:90px;border-radius:50%;right:-42px;top:-52px;background:rgba(112,99,255,.09);filter:blur(3px)}
+.sourceSummary button:hover{transform:translateY(-2px);border-color:#394c67}
+.sourceSummary span,.sourceSummary small{display:block}.sourceSummary span{font-size:9px;font-weight:850;letter-spacing:.06em;color:#8d9aaf}.sourceSummary b{display:block;font-size:25px;margin:5px 0 1px}.sourceSummary small{font-size:9px;color:#647188}
+.sourceFilters{display:flex;gap:5px;flex-wrap:wrap}.sourceFilters button,.sourceSort button{border:1px solid #26364b;background:#0a1019;color:#78869b;border-radius:8px;padding:7px 9px;font-size:9px;font-weight:800;cursor:pointer}.sourceFilters button.active,.sourceSort button.active{color:#eef2ff;background:#181d38;border-color:#5551a0}
+.panelHead{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.panelHead h2{margin:3px 0 5px}.sourcePage{max-width:1180px}.sourceSearch{width:min(420px,100%);margin:12px 0 2px}
+.sourceGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:14px}.sourceCard{padding:15px;border:1px solid #203047;border-radius:13px;color:#e9eef7;text-align:left}.sourceCardButton{cursor:pointer}.sourceCard>div:first-child{display:flex;align-items:center;gap:8px}.sourceCard code{display:block;color:#617089;font-size:9px;margin-top:9px;overflow:hidden;text-overflow:ellipsis}
+.sourceBadge{display:inline-flex;align-items:center;width:max-content;border-radius:999px;padding:4px 7px;font-size:8px;font-weight:900;letter-spacing:.04em}.fomoBadge{color:#ffbc75;background:#2a1b0f;border:1px solid #5b3a1d}.coinbaseBadge{color:#83a7ff;background:#101b36;border:1px solid #263f7c}.dexBadge{color:#65dfa3;background:#10251b;border:1px solid #28553e}
+@media(max-width:1050px){.sourceSummary{grid-template-columns:1fr 1fr}.sourceGrid{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){.sourceSummary{gap:8px}.sourceSummary button{padding:12px}.sourceSummary b{font-size:22px}.sourceGrid{grid-template-columns:1fr}.panelHead{align-items:flex-start}.sourceFilters{width:100%;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px}.sourceFilters button{white-space:nowrap}}
