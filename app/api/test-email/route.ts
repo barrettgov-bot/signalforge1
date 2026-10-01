@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function POST(request: Request) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
   const apiKey = process.env.RESEND_API_KEY;
   const to = process.env.ALERT_EMAIL;
   const from = process.env.RESEND_FROM || "SignalForge <onboarding@resend.dev>";
