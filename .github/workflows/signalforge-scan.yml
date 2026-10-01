@@ -19,4 +19,7 @@ jobs:
           curl --fail --silent --show-error \
             --retry 2 \
             -H "Authorization: Bearer $CRON_SECRET" \
-            "$SIGNALFORGE_URL/api/scan"
+            "$SIGNALFORGE_URL/api/scan"\n          curl --fail --silent --show-error \
+            --retry 2 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$SIGNALFORGE_URL/api/fomo-live"
