@@ -1,0 +1,4 @@
+import {NextResponse} from "next/server";
+function store(){return{base:process.env["kv_KV_REST_API_URL"]||process.env.KV_REST_API_URL||process.env.UPSTASH_REDIS_REST_URL,token:process.env["kv_KV_REST_API_TOKEN"]||process.env.KV_REST_API_TOKEN||process.env.UPSTASH_REDIS_REST_TOKEN}}
+async function redis(args:unknown[]){const{base,token}=store();if(!base||!token)return null;const r=await fetch(base,{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(args)});return r.ok?r.json():null}
+export async function GET(){const raw=await redis(["LRANGE","signalforge:fomo:listings",0,99]);const listings=(Array.isArray(raw?.result)?raw.result:[]).flatMap((x:string)=>{try{return[JSON.parse(x)]}catch{return[]}});return NextResponse.json({ok:true,listings,updatedAt:new Date().toISOString()})}
