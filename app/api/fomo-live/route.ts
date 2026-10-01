@@ -1,6 +1,54 @@
 import {NextResponse} from "next/server";
-type FomoAlert={eventId?:string;alertType?:string;token?:string;tokenAddress?:string;chain?:string;chainId?:string|number;source?:string;ts?:string;timestamp?:string};
+import webpush from "web-push";
+
+type FomoAlert={eventId?:string;alertType?:string;token?:string;tokenAddress?:string;chain?:string;chainId?:string|number;ts?:string;timestamp?:string};
+type Market={price:number;liquidity:number;volume1h:number;change5m:number;change1h:number;buys1h:number;sells1h:number};
+
 function store(){return{base:process.env["kv_KV_REST_API_URL"]||process.env.KV_REST_API_URL||process.env.UPSTASH_REDIS_REST_URL,token:process.env["kv_KV_REST_API_TOKEN"]||process.env.KV_REST_API_TOKEN||process.env.UPSTASH_REDIS_REST_TOKEN}}
 async function redis(args:unknown[]){const{base,token}=store();if(!base||!token)return null;const r=await fetch(base,{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(args)});return r.ok?r.json():null}
-async function push(title:string,body:string,tag:string){const pub=process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,priv=process.env.VAPID_PRIVATE_KEY,subject=process.env.VAPID_SUBJECT;if(!pub||!priv||!subject)return;const webpush=(await import("web-push")).default;webpush.setVapidDetails(subject,pub,priv);const index=await redis(["SMEMBERS","signalforge:push:index"]);for(const key of Array.isArray(index?.result)?index.result:[]){const d=await redis(["GET",key]);if(!d?.result)continue;try{await webpush.sendNotification(JSON.parse(d.result),JSON.stringify({title,body,url:"/",tag}))}catch{}}}
-export async function GET(request:Request){const secret=process.env.CRON_SECRET;if(!secret||request.headers.get("authorization")!==`Bearer ${secret}`)return NextResponse.json({ok:false,error:"unauthorized"},{status:401});const key=process.env.FOMO_API_KEY;if(!key)return NextResponse.json({ok:false,error:"fomo_not_configured"},{status:503});const sinceRaw=await redis(["GET","signalforge:fomo:last-seen"]);const since=sinceRaw?.result||new Date(Date.now()-10*60*1000).toISOString();const r=await fetch(`https://api.fomoapi.io/v2/alerts?limit=100&since=${encodeURIComponent(since)}`,{cache:"no-store",headers:{authorization:"Bearer "+key}});if(!r.ok)return NextResponse.json({ok:false,error:"fomo_unavailable",status:r.status},{status:502});const d=await r.json();const rows:FomoAlert[]=Array.isArray(d?.alerts)?d.alerts:Array.isArray(d?.items)?d.items:[];const listings=rows.filter(x=>String(x.alertType||"").toLowerCase()==="listing");let fresh=0;for(const x of listings){const id=x.eventId||`${x.chain||x.chainId}:${x.tokenAddress}:${x.ts||x.timestamp||""}`,dedupe=`signalforge:fomo:listing:${id}`;if((await redis(["GET",dedupe]))?.result)continue;await redis(["SET",dedupe,"1","EX",604800]);const token=String(x.token||"TOKEN").toUpperCase(),address=x.tokenAddress||"",chain=x.chain||String(x.chainId||"unknown"),detectedAt=new Date().toISOString(),eventTime=x.ts||x.timestamp||null;type Market={price:number;liquidity:number;volume1h:number;change5m:number;change1h:number;buys1h:number;sells1h:number};let market:Market|null=null;if(address&&chain!=="unknown")try{const q=await fetch(`https://api.dexscreener.com/token-pairs/v1/${encodeURIComponent(chain)}/${encodeURIComponent(address)}`,{cache:"no-store"});if(q.ok){const pairs=await q.json(),p=Array.isArray(pairs)?pairs[0]:null;if(p)market={price:Number(p.priceUsd)||0,liquidity:Number(p.liquidity?.usd)||0,volume1h:Number(p.volume?.h1)||0,change5m:Number(p.priceChange?.m5)||0,change1h:Number(p.priceChange?.h1)||0,buys1h:Number(p.txns?.h1?.buys)||0,sells1h:Number(p.txns?.h1?.sells)||0}}catch{}const event={eventId:id,token,address,chain,detectedAt,eventTime,source:"FOMO",status:"NEW ON FOMO",market};await redis(["LPUSH","signalforge:fomo:listings",JSON.stringify(event)]);await redis(["LTRIM","signalforge:fomo:listings",0,199]);await push(`🆕 NEW ON FOMO: $${event.token}`,`${event.chain} · ${market!==null?`liq ${Math.round(market.liquidity).toLocaleString()} · 5m ${market.change5m>=0?"+":""}${market.change5m.toFixed(1)}%`:"market data loading"}`,`fomo-listing-${id}`);fresh++}await redis(["SET","signalforge:fomo:last-seen",new Date().toISOString(),"EX",604800]);return NextResponse.json({ok:true,checked:rows.length,listings:listings.length,newListings:fresh,since})}
+async function push(title:string,body:string,tag:string){const pub=process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,priv=process.env.VAPID_PRIVATE_KEY,subject=process.env.VAPID_SUBJECT;if(!pub||!priv||!subject)return;webpush.setVapidDetails(subject,pub,priv);const index=await redis(["SMEMBERS","signalforge:push:index"]);for(const subKey of Array.isArray(index?.result)?index.result:[]){const d=await redis(["GET",subKey]);if(!d?.result)continue;try{await webpush.sendNotification(JSON.parse(d.result),JSON.stringify({title,body,url:"/",tag}))}catch{}}}
+
+export async function GET(request:Request){
+ const secret=process.env.CRON_SECRET;
+ if(!secret||request.headers.get("authorization")!==`Bearer ${secret}`)return NextResponse.json({ok:false,error:"unauthorized"},{status:401});
+ const apiKey=process.env.FOMO_API_KEY;
+ if(!apiKey)return NextResponse.json({ok:false,error:"fomo_not_configured"},{status:503});
+ const sinceRaw=await redis(["GET","signalforge:fomo:last-seen"]);
+ const since=sinceRaw?.result||new Date(Date.now()-10*60*1000).toISOString();
+ const r=await fetch(`https://api.fomoapi.io/v2/alerts?limit=100&since=${encodeURIComponent(since)}`,{cache:"no-store",headers:{authorization:"Bearer "+apiKey}});
+ if(!r.ok)return NextResponse.json({ok:false,error:"fomo_unavailable",status:r.status},{status:502});
+ const d=await r.json();
+ const rows:FomoAlert[]=Array.isArray(d?.alerts)?d.alerts:Array.isArray(d?.items)?d.items:[];
+ const listings=rows.filter(x=>String(x.alertType||"").toLowerCase()==="listing");
+ let fresh=0;
+ for(const x of listings){
+  const id=x.eventId||`${x.chain||x.chainId}:${x.tokenAddress}:${x.ts||x.timestamp||""}`;
+  const dedupe=`signalforge:fomo:listing:${id}`;
+  if((await redis(["GET",dedupe]))?.result)continue;
+  await redis(["SET",dedupe,"1","EX",604800]);
+  const token=String(x.token||"TOKEN").toUpperCase();
+  const address=x.tokenAddress||"";
+  const chain=x.chain||String(x.chainId||"unknown");
+  const detectedAt=new Date().toISOString();
+  const eventTime=x.ts||x.timestamp||null;
+  let market:Market|null=null;
+  if(address&&chain!=="unknown"){
+   try{
+    const q=await fetch(`https://api.dexscreener.com/token-pairs/v1/${encodeURIComponent(chain)}/${encodeURIComponent(address)}`,{cache:"no-store"});
+    if(q.ok){
+     const pairs=await q.json();
+     const p=Array.isArray(pairs)?pairs[0]:null;
+     if(p)market={price:Number(p.priceUsd)||0,liquidity:Number(p.liquidity?.usd)||0,volume1h:Number(p.volume?.h1)||0,change5m:Number(p.priceChange?.m5)||0,change1h:Number(p.priceChange?.h1)||0,buys1h:Number(p.txns?.h1?.buys)||0,sells1h:Number(p.txns?.h1?.sells)||0};
+    }
+   }catch{}
+  }
+  const event={eventId:id,token,address,chain,detectedAt,eventTime,source:"FOMO",status:"NEW ON FOMO",market};
+  await redis(["LPUSH","signalforge:fomo:listings",JSON.stringify(event)]);
+  await redis(["LTRIM","signalforge:fomo:listings",0,199]);
+  const marketText=market?`liq $${Math.round(market.liquidity).toLocaleString()} · 5m ${market.change5m>=0?"+":""}${market.change5m.toFixed(1)}%`:"market data loading";
+  await push(`🆕 NEW ON FOMO: $${event.token}`,`${event.chain} · ${marketText}`,`fomo-listing-${id}`);
+  fresh++;
+ }
+ await redis(["SET","signalforge:fomo:last-seen",new Date().toISOString(),"EX",604800]);
+ return NextResponse.json({ok:true,checked:rows.length,listings:listings.length,newListings:fresh,since});
+}
